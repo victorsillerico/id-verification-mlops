@@ -1,6 +1,13 @@
 import cv2
 import numpy as np
 
+from pathlib import Path
+
+import pandas as pd
+from PIL import Image
+
+from src.config import IMAGES_DIR
+
 rng = np.random.default_rng(0)   # fixed seed, so results are repeatable
 MIN_BLUR = 100.0     # below this the image is too blurry
 MAX_GLARE = 0.05     # more than 5% blown-out pixels is too much
@@ -53,3 +60,34 @@ def local_edit(img):
     y2, x2 = rng.integers(0, h - ph), rng.integers(0, w - pw)
     out[y1:y1 + ph, x1:x1 + pw] = img[y2:y2 + ph, x2:x2 + pw]
     return out
+
+def build_dataset(source_dir="data/source", n=300):
+    out = Path(IMAGES_DIR) / "raw"
+    out.mkdir(parents=True, exist_ok=True)
+    files = sorted(p for p in Path(source_dir).rglob("*")
+                   if p.suffix.lower() in {".jpg", ".jpeg", ".png"})
+    rng.shuffle(files)
+    rows = []
+    for i, p in enumerate(files[:n]):
+        img = Image.open(p).convert("RGB")
+        img.thumbnail((1024, 1024))
+        arr = np.array(img)
+        attack = str(rng.choice(list(ATTACKS)))
+        for name, a in [("real", arr), (attack, ATTACKS[attack](arr))]:
+            path = out / f"{i:04d}_{name}.jpg"
+            Image.fromarray(a).save(path, quality=90)
+            rows.append({"path": str(path), "doc": i, "attack": name, "label": int(name != "real")})
+    pd.DataFrame(rows).to_csv(Path(IMAGES_DIR) / "labels.csv", index=False)
+
+
+def split_dataset(seed=0):
+    csv_path = Path(IMAGES_DIR) / "labels.csv"
+    df = pd.read_csv(csv_path)
+    docs = df["doc"].unique()
+    np.random.default_rng(seed).shuffle(docs)
+    n = len(docs)
+    split_of = {d: "train" if k < 0.7 * n else "val" if k < 0.85 * n else "test"
+                for k, d in enumerate(docs)}
+    df["split"] = df["doc"].map(split_of)
+    df.to_csv(csv_path, index=False)
+    return df
