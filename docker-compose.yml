@@ -31,6 +31,21 @@ services:
     volumes: [images:/data/images]
     ports: ["8501:8501"]
     depends_on: [api]
+  
+  airflow:
+    build: {context: ., dockerfile: airflow/Dockerfile}
+    command: standalone
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      MLFLOW_URI: http://mlflow:5000
+      IMAGES_DIR: /data/images
+      PYTHONPATH: /opt/airflow
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
+      - ./data/source:/opt/airflow/data/source:ro
+      - images:/data/images
+    ports: ["8080:8080"]  
 
 volumes:
   mongo_data:
