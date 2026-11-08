@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+mlflow
+pymongo
+pillow
+numpy
+opencv-python-headless
+ultralytics
