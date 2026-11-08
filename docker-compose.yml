@@ -1,0 +1,38 @@
+services:
+  mongo:
+    image: mongo:7
+    volumes: [mongo_data:/data/db]
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    command: >
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts --serve-artifacts
+    volumes: [mlflow_data:/mlflow]
+    ports: ["5000:5000"]
+
+  api:
+    build: {context: ., dockerfile: api/Dockerfile}
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      MLFLOW_URI: http://mlflow:5000
+      IMAGES_DIR: /data/images
+    volumes: [images:/data/images]
+    ports: ["8000:8000"]
+    depends_on: [mongo, mlflow]
+
+  app:
+    build: {context: ., dockerfile: app/Dockerfile}
+    environment:
+      MONGO_URI: mongodb://mongo:27017
+      API_URL: http://api:8000
+      IMAGES_DIR: /data/images
+    volumes: [images:/data/images]
+    ports: ["8501:8501"]
+    depends_on: [api]
+
+volumes:
+  mongo_data:
+  mlflow_data:
+  images:
