@@ -91,3 +91,9 @@ def split_dataset(seed=0):
     df["split"] = df["doc"].map(split_of)
     df.to_csv(csv_path, index=False)
     return df
+
+def validate_dataset():
+    df = pd.read_csv(Path(IMAGES_DIR) / "labels.csv")
+    assert len(df) > 0 and df["label"].nunique() == 2, "dataset empty or only one class"
+    missing = [p for p in df["path"] if not Path(p).exists()]
+    assert not missing, f"{len(missing)} image files are missing"
