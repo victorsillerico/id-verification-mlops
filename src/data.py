@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 from PIL import Image
 
-from src.config import IMAGES_DIR
+from src.config import IMAGES_DIR, CLS_DIR
 
 rng = np.random.default_rng(0)   # fixed seed, so results are repeatable
 MIN_BLUR = 100.0     # below this the image is too blurry
@@ -97,3 +97,12 @@ def validate_dataset():
     assert len(df) > 0 and df["label"].nunique() == 2, "dataset empty or only one class"
     missing = [p for p in df["path"] if not Path(p).exists()]
     assert not missing, f"{len(missing)} image files are missing"
+
+def export_for_yolo(out=CLS_DIR):
+    shutil.rmtree(out, ignore_errors=True)
+    df = pd.read_csv(Path(IMAGES_DIR) / "labels.csv")
+    for _, r in df.iterrows():
+        d = Path(out) / r["split"] / ("fake" if r["label"] else "real")
+        d.mkdir(parents=True, exist_ok=True)
+        shutil.copy(r["path"], d)
+        
